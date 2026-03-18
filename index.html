@@ -1285,8 +1285,8 @@ function ProspectSearch({ onSelect }) {
         body: JSON.stringify({ action: "get_deal", dealId: deal.id })
       });
       const ctx = await resp.json();
-      setSelected({ type: "deal", label: ctx.dealName, dealStage: ctx.dealStage, persona: ctx.persona || "", contactName: ctx.contactName || "", segmentRaw: ctx.segmentRaw || "" });
-      onSelect({ dealStage: ctx.dealStage, persona: ctx.persona || "" });
+      setSelected({ type: "deal", label: ctx.dealName, dealStage: ctx.dealStage, persona: ctx.persona || "", contactName: ctx.contactName || "", segmentRaw: ctx.segmentRaw || "", competitor: ctx.competitor || "None / not sure", competitorRaw: ctx.competitorRaw || "" });
+      onSelect({ dealStage: ctx.dealStage, persona: ctx.persona || "", competitor: ctx.competitor || "None / not sure", challenges: ctx.challenges || [], notes: ctx.notes || "" });
     } catch (err) {}
     setSearching(false);
   };
@@ -1301,8 +1301,8 @@ function ProspectSearch({ onSelect }) {
         body: JSON.stringify({ action: "get_contact", contactId: contact.id })
       });
       const ctx = await resp.json();
-      setSelected({ type: "contact", label: ctx.contactName, dealStage: ctx.dealStage || "", persona: ctx.persona || "", company: ctx.company || "", segmentRaw: ctx.segmentRaw || "" });
-      onSelect({ dealStage: ctx.dealStage || "", persona: ctx.persona || "" });
+      setSelected({ type: "contact", label: ctx.contactName, dealStage: ctx.dealStage || "", persona: ctx.persona || "", company: ctx.company || "", segmentRaw: ctx.segmentRaw || "", competitor: ctx.competitor || "None / not sure", competitorRaw: ctx.competitorRaw || "" });
+      onSelect({ dealStage: ctx.dealStage || "", persona: ctx.persona || "", competitor: ctx.competitor || "None / not sure", challenges: ctx.challenges || [], notes: ctx.notes || "" });
     } catch (err) {}
     setSearching(false);
   };
@@ -1327,6 +1327,7 @@ function ProspectSearch({ onSelect }) {
             {selected.dealStage && `${selected.dealStage}`}
             {selected.dealStage && selected.segmentRaw && " · "}
             {selected.segmentRaw && `${selected.segmentRaw}`}
+            {selected.competitorRaw && selected.competitorRaw !== "None / not sure" && ` · vs ${selected.competitorRaw}`}
           </span>
           <button type="button" onClick={handleClear} style={{background: "none", border: "none", cursor: "pointer", color: "var(--gray-400)", fontSize: "1rem", padding: "0 0.25rem"}}>&times;</button>
         </div>
@@ -1394,9 +1395,15 @@ function App() {
   const [results, setResults] = useState([]);
   const [error, setError] = useState("");
 
-  const handleProspectSelect = useCallback(({ dealStage: ds, persona: p }) => {
+  const handleProspectSelect = useCallback(({ dealStage: ds, persona: p, competitor: c, challenges: ch, notes: n }) => {
     if (ds) setDealStage(ds);
     if (p) setPersona(p);
+    if (c) setCompetitor(c);
+    if (ch && ch.length > 0) setChallenges(prev => {
+      const merged = [...new Set([...prev, ...ch])];
+      return merged;
+    });
+    if (n) setContext(n);
   }, []);
 
   const handleSetKey = (e) => {

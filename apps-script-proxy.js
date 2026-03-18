@@ -127,6 +127,51 @@ var SEGMENT_MAP = {
 };
 
 // ---------------------------------------------------------------------------
+// Competitor mapping: HubSpot values -> Content Finder competitors
+// ---------------------------------------------------------------------------
+var COMPETITOR_MAP = {
+  "Angel List":           "AngelList",
+  "Carta":                "Carta",
+  "Allocations":          "Allocations",
+  "Manual/No Software":   "Manual / DIY (law firm)",
+  "Aduro":                "None / not sure",
+  "Canopy":               "None / not sure",
+  "Odin":                 "None / not sure",
+  "Finally Fund Admin":   "None / not sure",
+  "Juniper Square":       "None / not sure",
+  "Loon Creek":           "None / not sure",
+  "Flow Inc":             "None / not sure",
+  "Venture 360":          "None / not sure",
+  "PropelX":              "None / not sure",
+  "Sally":                "None / not sure",
+  "Other":                "None / not sure",
+};
+
+// ---------------------------------------------------------------------------
+// Challenge inference: map non_convert_subreason values to Content Finder challenges
+// ---------------------------------------------------------------------------
+var SUBREASON_TO_CHALLENGE = {
+  "Cost":                              "Pricing",
+  "Fee Structure":                     "Pricing",
+  "Custom Docs":                       "Compliance / regulatory questions",
+  "RIA":                               "Compliance / regulatory questions",
+  "506c":                              "Compliance / regulatory questions",
+  "Jurisdiction":                      "Compliance / regulatory questions",
+  "International Passthrough":         "Compliance / regulatory questions",
+  "GP/LP Structure":                   "Layered SPVs / complex structures",
+  "Multi Close":                       "Layered SPVs / complex structures",
+  "Take Over Existing SPVs":           "Layered SPVs / complex structures",
+  "Co-Management":                     "Layered SPVs / complex structures",
+  "Co-Syndication":                    "Layered SPVs / complex structures",
+  "Couldn't Fundraise":                "Building a track record / LP base",
+  "No Deal Ready/Lost Deal":           "Building a track record / LP base",
+  "Vendor Risk":                       "Sydecar credibility / brand",
+  "Wanted White Label":                "Sydecar credibility / brand",
+  "Capital Calls":                     "Speed",
+  "PE Investment (Frequent Distributions)": "Speed",
+};
+
+// ---------------------------------------------------------------------------
 // Action: Search deals by name
 // ---------------------------------------------------------------------------
 function searchDeals(query) {
@@ -189,8 +234,8 @@ function searchContacts(query) {
 // Action: Get full context for a deal (deal stage + associated contact segment)
 // ---------------------------------------------------------------------------
 function getDealContext(dealId) {
-  // Get the deal
-  var deal = hubspotFetch("/crm/v3/objects/deals/" + dealId + "?properties=dealname,dealstage,amount,pipeline&associations=contacts", {});
+  // Get the deal with description for challenge inference
+  var deal = hubspotFetch("/crm/v3/objects/deals/" + dealId + "?properties=dealname,dealstage,amount,pipeline,description&associations=contacts", {});
 
   var stage = STAGE_MAP[deal.properties.dealstage] || "SQL";
   var result = {
@@ -201,21 +246,42 @@ function getDealContext(dealId) {
     persona: null,
     segmentRaw: null,
     contactName: null,
-    contactEmail: null
+    contactEmail: null,
+    competitor: "None / not sure",
+    competitorRaw: null,
+    challenges: [],
+    notes: deal.properties.description || ""
   };
 
-  // Get associated contacts to find customer_segment
+  // Get associated contacts for segment, competitor, subreason, and notes
   var assocContacts = (deal.associations && deal.associations.contacts &&
     deal.associations.contacts.results) || [];
 
   if (assocContacts.length > 0) {
     var contactId = assocContacts[0].id;
-    var contact = hubspotFetch("/crm/v3/objects/contacts/" + contactId + "?properties=firstname,lastname,email,customer_segment", {});
+    var contact = hubspotFetch("/crm/v3/objects/contacts/" + contactId + "?properties=firstname,lastname,email,customer_segment,competitor,non_convert_subreason,lead_qualification_notes", {});
     var seg = contact.properties.customer_segment || "";
     result.persona = SEGMENT_MAP[seg] || "Other";
     result.segmentRaw = seg;
     result.contactName = [(contact.properties.firstname || ""), (contact.properties.lastname || "")].join(" ").trim();
     result.contactEmail = contact.properties.email || "";
+
+    // Competitor
+    var comp = contact.properties.competitor || "";
+    result.competitorRaw = comp;
+    result.competitor = COMPETITOR_MAP[comp] || "None / not sure";
+
+    // Challenges from non_convert_subreason
+    var subreason = contact.properties.non_convert_subreason || "";
+    if (subreason && SUBREASON_TO_CHALLENGE[subreason]) {
+      result.challenges.push(SUBREASON_TO_CHALLENGE[subreason]);
+    }
+
+    // Append lead qualification notes for challenge inference
+    var lqNotes = contact.properties.lead_qualification_notes || "";
+    if (lqNotes) {
+      result.notes = (result.notes ? result.notes + "\n\n" : "") + lqNotes;
+    }
   }
 
   return result;
@@ -225,10 +291,20 @@ function getDealContext(dealId) {
 // Action: Get contact context (segment + associated deal stage)
 // ---------------------------------------------------------------------------
 function getContactContext(contactId) {
-  var contact = hubspotFetch("/crm/v3/objects/contacts/" + contactId + "?properties=firstname,lastname,email,customer_segment,company&associations=deals", {});
+  var contact = hubspotFetch("/crm/v3/objects/contacts/" + contactId + "?properties=firstname,lastname,email,customer_segment,company,competitor,non_convert_subreason,lead_qualification_notes&associations=deals", {});
 
   var seg = contact.properties.customer_segment || "";
   var name = [(contact.properties.firstname || ""), (contact.properties.lastname || "")].join(" ").trim();
+
+  // Competitor
+  var comp = contact.properties.competitor || "";
+
+  // Challenges from non_convert_subreason
+  var challenges = [];
+  var subreason = contact.properties.non_convert_subreason || "";
+  if (subreason && SUBREASON_TO_CHALLENGE[subreason]) {
+    challenges.push(SUBREASON_TO_CHALLENGE[subreason]);
+  }
 
   var result = {
     contactId: contactId,
@@ -238,19 +314,26 @@ function getContactContext(contactId) {
     persona: SEGMENT_MAP[seg] || "Other",
     segmentRaw: seg,
     dealStage: null,
-    dealName: null
+    dealName: null,
+    competitor: COMPETITOR_MAP[comp] || "None / not sure",
+    competitorRaw: comp,
+    challenges: challenges,
+    notes: contact.properties.lead_qualification_notes || ""
   };
 
-  // Get associated deals to find deal stage
+  // Get associated deals for deal stage and description
   var assocDeals = (contact.associations && contact.associations.deals &&
     contact.associations.deals.results) || [];
 
   if (assocDeals.length > 0) {
-    // Use the most recent deal (first in list)
     var dealId = assocDeals[0].id;
-    var deal = hubspotFetch("/crm/v3/objects/deals/" + dealId + "?properties=dealname,dealstage", {});
+    var deal = hubspotFetch("/crm/v3/objects/deals/" + dealId + "?properties=dealname,dealstage,description", {});
     result.dealStage = STAGE_MAP[deal.properties.dealstage] || "SQL";
     result.dealName = deal.properties.dealname || "";
+    var dealDesc = deal.properties.description || "";
+    if (dealDesc) {
+      result.notes = (result.notes ? result.notes + "\n\n" : "") + dealDesc;
+    }
   }
 
   return result;
