@@ -1237,6 +1237,150 @@ function parseSheetCSV(csvText) {
   });
 }
 
+// ============================================================================
+// PROSPECT SEARCH — Look up deals/contacts from HubSpot
+// ============================================================================
+function ProspectSearch({ onSelect }) {
+  const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState(null);
+  const [searching, setSearching] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const debounceRef = useRef(null);
+
+  const doSearch = async (q) => {
+    if (!APPS_SCRIPT_URL || q.length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    setSearching(true);
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ action: "search", query: q })
+      });
+      const data = await resp.json();
+      setSearchResults(data);
+    } catch (err) {
+      setSearchResults(null);
+    }
+    setSearching(false);
+  };
+
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setQuery(val);
+    setSelected(null);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => doSearch(val), 350);
+  };
+
+  const handlePickDeal = async (deal) => {
+    setSearching(true);
+    setSearchResults(null);
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ action: "get_deal", dealId: deal.id })
+      });
+      const ctx = await resp.json();
+      setSelected({ type: "deal", label: ctx.dealName, dealStage: ctx.dealStage, persona: ctx.persona || "", contactName: ctx.contactName || "", segmentRaw: ctx.segmentRaw || "" });
+      onSelect({ dealStage: ctx.dealStage, persona: ctx.persona || "" });
+    } catch (err) {}
+    setSearching(false);
+  };
+
+  const handlePickContact = async (contact) => {
+    setSearching(true);
+    setSearchResults(null);
+    try {
+      const resp = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ action: "get_contact", contactId: contact.id })
+      });
+      const ctx = await resp.json();
+      setSelected({ type: "contact", label: ctx.contactName, dealStage: ctx.dealStage || "", persona: ctx.persona || "", company: ctx.company || "", segmentRaw: ctx.segmentRaw || "" });
+      onSelect({ dealStage: ctx.dealStage || "", persona: ctx.persona || "" });
+    } catch (err) {}
+    setSearching(false);
+  };
+
+  const handleClear = () => {
+    setQuery("");
+    setSelected(null);
+    setSearchResults(null);
+    onSelect({ dealStage: "", persona: "" });
+  };
+
+  const hasResults = searchResults && ((searchResults.deals && searchResults.deals.length > 0) || (searchResults.contacts && searchResults.contacts.length > 0));
+
+  return (
+    <div className="form-group full-width" style={{position: "relative"}}>
+      <label htmlFor="prospectSearch">Look Up Prospect</label>
+      {selected ? (
+        <div style={{display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.6rem 0.75rem", border: "1px solid var(--gray-200)", borderRadius: 8, background: "var(--gray-50)"}}>
+          <span style={{fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", color: selected.type === "deal" ? "var(--blue-600)" : "var(--purple-700)", background: selected.type === "deal" ? "var(--blue-50)" : "var(--purple-50)", padding: "0.15rem 0.4rem", borderRadius: 4}}>{selected.type}</span>
+          <span style={{fontWeight: 500, flex: 1}}>{selected.label}</span>
+          <span style={{fontSize: "0.78rem", color: "var(--gray-400)"}}>
+            {selected.dealStage && `${selected.dealStage}`}
+            {selected.dealStage && selected.segmentRaw && " · "}
+            {selected.segmentRaw && `${selected.segmentRaw}`}
+          </span>
+          <button type="button" onClick={handleClear} style={{background: "none", border: "none", cursor: "pointer", color: "var(--gray-400)", fontSize: "1rem", padding: "0 0.25rem"}}>&times;</button>
+        </div>
+      ) : (
+        <input
+          id="prospectSearch"
+          type="text"
+          value={query}
+          onChange={handleInputChange}
+          placeholder="Search by deal name, contact name, or email..."
+          style={{fontFamily: "var(--font-sans)", fontSize: "0.95rem", padding: "0.6rem 0.75rem", border: "1px solid var(--gray-300)", borderRadius: 8, background: "var(--white)", color: "var(--gray-800)", width: "100%"}}
+          autoComplete="off"
+        />
+      )}
+      {searching && (
+        <div style={{position: "absolute", right: 12, top: 34, display: "flex", alignItems: "center"}}>
+          <div className="spinner" style={{width: 16, height: 16, borderWidth: 2}} />
+        </div>
+      )}
+      {!selected && hasResults && (
+        <div style={{position: "absolute", top: "100%", left: 0, right: 0, background: "var(--white)", border: "1px solid var(--gray-200)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.08)", zIndex: 50, maxHeight: 280, overflowY: "auto", marginTop: 4}}>
+          {searchResults.deals && searchResults.deals.length > 0 && (
+            <div>
+              <div style={{padding: "0.5rem 0.75rem", fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", color: "var(--gray-400)", background: "var(--gray-50)", borderBottom: "1px solid var(--gray-100)"}}>Deals</div>
+              {searchResults.deals.map(d => (
+                <button key={d.id} type="button" onClick={() => handlePickDeal(d)} style={{display: "flex", width: "100%", padding: "0.5rem 0.75rem", border: "none", background: "none", cursor: "pointer", textAlign: "left", gap: "0.5rem", alignItems: "center", fontSize: "0.9rem", borderBottom: "1px solid var(--gray-50)"}}>
+                  <span style={{fontWeight: 500, flex: 1}}>{d.name}</span>
+                  <span style={{fontSize: "0.75rem", color: "var(--gray-400)"}}>{d.dealStage}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {searchResults.contacts && searchResults.contacts.length > 0 && (
+            <div>
+              <div style={{padding: "0.5rem 0.75rem", fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", color: "var(--gray-400)", background: "var(--gray-50)", borderBottom: "1px solid var(--gray-100)"}}>Contacts</div>
+              {searchResults.contacts.map(c => (
+                <button key={c.id} type="button" onClick={() => handlePickContact(c)} style={{display: "flex", width: "100%", padding: "0.5rem 0.75rem", border: "none", background: "none", cursor: "pointer", textAlign: "left", gap: "0.5rem", alignItems: "center", fontSize: "0.9rem", borderBottom: "1px solid var(--gray-50)"}}>
+                  <span style={{fontWeight: 500, flex: 1}}>{c.name}</span>
+                  <span style={{fontSize: "0.75rem", color: "var(--gray-400)"}}>{c.company ? `${c.company} · ` : ""}{c.persona}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {!selected && !searching && query.length >= 2 && searchResults && !hasResults && (
+        <div style={{position: "absolute", top: "100%", left: 0, right: 0, background: "var(--white)", border: "1px solid var(--gray-200)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.08)", zIndex: 50, padding: "0.75rem", marginTop: 4}}>
+          <p style={{fontSize: "0.85rem", color: "var(--gray-400)", textAlign: "center"}}>No deals or contacts found. You can still fill in the fields manually below.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [apiKey, setApiKey] = useState(() => sessionStorage.getItem("sydecar_cf_key") || "");
   const [keyInput, setKeyInput] = useState("");
@@ -1249,6 +1393,11 @@ function App() {
   const [status, setStatus] = useState("idle"); // idle | loading | results | error
   const [results, setResults] = useState([]);
   const [error, setError] = useState("");
+
+  const handleProspectSelect = useCallback(({ dealStage: ds, persona: p }) => {
+    if (ds) setDealStage(ds);
+    if (p) setPersona(p);
+  }, []);
 
   const handleSetKey = (e) => {
     e.preventDefault();
@@ -1423,6 +1572,7 @@ Return ONLY a JSON array. No other text, no markdown fences. Each element:
       <div className="form-card">
         <form onSubmit={handleSubmit}>
           <div className="form-grid">
+            <ProspectSearch onSelect={handleProspectSelect} />
             <SelectField id="dealStage" label="Deal Stage" options={DEAL_STAGES} value={dealStage} onChange={setDealStage} required placeholder="Select..." />
             <SelectField id="persona" label="Prospect Persona" options={PERSONAS} value={persona} onChange={setPersona} required placeholder="Select..." />
             <SelectField id="competitor" label="Competitor Mentioned" options={COMPETITORS} value={competitor} onChange={setCompetitor} />
