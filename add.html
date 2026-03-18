@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add Asset — Sydecar Content Finder</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAALVBMVEUdHSD///8TExb8/PwkJCfLy8xtbW9OTlCYmJo9PUCGhoetra7q6upfX2HU1NV4Vv9XAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAq0lEQVR42u2VWw7DIAwEwTZQnvc/bn2ArbRtpDYVjPKZTTKys4RwOOyAvIDO1wKZlXxAG4qI3ajXW48AjdqE+/zkN4P8mFx+Dpxflcs3xfluQurrHfUTpx+aRsge+neYvn6uH/LA02P1S8Jw+o6ZXwDZu5XF2gNTyVJfeLAjc3lfDFjqb9QC2Es9tfAd/fXzQ2HfM1EuLn+oHf+7pL63csYUudhe/97KhwPHE09sC9hK1E3kAAAAAElFTkSuQmCC">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --white: #ffffff;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --blue-50: #eff6ff;
+    --blue-600: #2563eb;
+    --blue-700: #1d4ed8;
+    --green-50: #f0fdf4;
+    --green-700: #15803d;
+    --font-serif: 'DM Serif Display', serif;
+    --font-sans: 'DM Sans', sans-serif;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--gray-50);
+    color: var(--gray-800);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 3rem 1rem;
+  }
+
+  .card {
+    max-width: 520px;
+    width: 100%;
+    background: var(--white);
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    padding: 2.5rem;
+    height: fit-content;
+  }
+
+  .logo { height: 28px; margin-bottom: 1.5rem; }
+
+  h1 {
+    font-family: var(--font-serif);
+    font-size: 1.5rem;
+    font-weight: 400;
+    margin-bottom: 0.25rem;
+  }
+
+  .subtitle {
+    color: var(--gray-500);
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+  }
+
+  label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--gray-600);
+    margin-bottom: 0.35rem;
+  }
+
+  input, select {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--gray-300);
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    color: var(--gray-800);
+    background: var(--white);
+    outline: none;
+    transition: border 0.15s;
+  }
+  input:focus, select:focus { border-color: var(--blue-600); }
+
+  .form-group { margin-bottom: 1.25rem; }
+
+  .hint {
+    font-size: 0.78rem;
+    color: var(--gray-400);
+    margin-top: 0.25rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.5rem;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s, opacity 0.15s;
+  }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: var(--gray-900); color: var(--white); }
+  .btn-primary:hover:not(:disabled) { background: var(--gray-700); }
+
+  .success {
+    background: var(--green-50);
+    border: 1px solid #bbf7d0;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    color: var(--green-700);
+    font-size: 0.9rem;
+    margin-top: 1.25rem;
+    display: none;
+  }
+
+  .error {
+    background: #fff1f2;
+    border: 1px solid #fecdd3;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    color: #be123c;
+    font-size: 0.9rem;
+    margin-top: 1.25rem;
+    display: none;
+  }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--gray-300);
+    border-top-color: var(--white);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .back-link {
+    display: inline-block;
+    margin-top: 1.5rem;
+    font-size: 0.85rem;
+    color: var(--gray-500);
+    text-decoration: none;
+  }
+  .back-link:hover { color: var(--gray-700); }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <img class="logo" src="data:image/png;base64,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" alt="Sydecar" />
+  <h1>Add Asset</h1>
+  <p class="subtitle">Add a new content asset to the Content Finder library. It will be auto-tagged and available to the sales team within a minute.</p>
+
+  <form id="addForm">
+    <div class="form-group">
+      <label for="url">Asset URL</label>
+      <input id="url" type="url" placeholder="https://hubs.ly/... or https://sydecar.io/..." required />
+      <p class="hint">Paste the hubs.ly link, sydecar.io page, or any live URL</p>
+    </div>
+
+    <div class="form-group">
+      <label for="title">Title <span style="font-weight:400;color:var(--gray-400)">(optional)</span></label>
+      <input id="title" type="text" placeholder="Leave blank to auto-detect from URL" />
+    </div>
+
+    <div class="form-group">
+      <label for="type">Content type</label>
+      <select id="type">
+        <option value="">Auto-detect</option>
+        <option value="blog">Blog post</option>
+        <option value="learn">Learn center</option>
+        <option value="enablement">Sales one-pager</option>
+        <option value="report">Gated report</option>
+        <option value="demo">Interactive demo</option>
+        <option value="pr">Press / earned media</option>
+        <option value="webinar">Webinar</option>
+        <option value="glossary">Glossary</option>
+        <option value="update">Product update</option>
+      </select>
+    </div>
+
+    <button class="btn btn-primary" type="submit" id="submitBtn">
+      <span class="spinner" id="spinner"></span>
+      <span id="btnText">Add to library</span>
+    </button>
+  </form>
+
+  <div class="success" id="success">
+    <strong>Added.</strong> The asset will appear in Content Finder within about a minute.
+  </div>
+
+  <div class="error" id="error"></div>
+
+  <a class="back-link" href="./index.html">&larr; Back to Content Finder</a>
+</div>
+
+<script>
+// ============================================================================
+// CONFIGURATION — Set your Google Apps Script proxy URL here
+// ============================================================================
+const PROXY_URL = ""; // paste your deployed Apps Script URL
+
+const form = document.getElementById("addForm");
+const submitBtn = document.getElementById("submitBtn");
+const spinner = document.getElementById("spinner");
+const btnText = document.getElementById("btnText");
+const successEl = document.getElementById("success");
+const errorEl = document.getElementById("error");
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const url = document.getElementById("url").value.trim();
+  const title = document.getElementById("title").value.trim();
+  const type = document.getElementById("type").value;
+
+  if (!url) return;
+
+  if (!PROXY_URL) {
+    errorEl.textContent = "PROXY_URL is not configured. See setup instructions in the source code.";
+    errorEl.style.display = "block";
+    successEl.style.display = "none";
+    return;
+  }
+
+  submitBtn.disabled = true;
+  spinner.style.display = "inline-block";
+  btnText.textContent = "Adding...";
+  successEl.style.display = "none";
+  errorEl.style.display = "none";
+
+  try {
+    await fetch(PROXY_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, title, type })
+    });
+
+    // no-cors means we can't read the response, but the request goes through
+    successEl.style.display = "block";
+    form.reset();
+  } catch (err) {
+    errorEl.textContent = "Something went wrong: " + err.message;
+    errorEl.style.display = "block";
+  } finally {
+    submitBtn.disabled = false;
+    spinner.style.display = "none";
+    btnText.textContent = "Add to library";
+  }
+});
+</script>
+</body>
+</html>
