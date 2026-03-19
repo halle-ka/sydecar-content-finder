@@ -288,55 +288,46 @@ async function getContactContext(contactId, env) {
 }
 
 // ---------------------------------------------------------------------------
-// Send content request to Slack
+// Create Asana task for content request
 // ---------------------------------------------------------------------------
 async function sendContentRequest(payload, env) {
-  const webhookUrl = env.SLACK_WEBHOOK_URL;
-  if (!webhookUrl) throw new Error("SLACK_WEBHOOK_URL not configured");
+  const token = env.ASANA_TOKEN;
+  if (!token) throw new Error("ASANA_TOKEN not configured");
 
-  const fields = [];
-  if (payload.contentType) fields.push({ title: "Format", value: payload.contentType, short: true });
-  if (payload.dealStage) fields.push({ title: "Deal Stage", value: payload.dealStage, short: true });
-  if (payload.persona) fields.push({ title: "Persona", value: payload.persona, short: true });
-  if (payload.challenges) fields.push({ title: "Challenges", value: payload.challenges, short: true });
-  if (payload.prospectName) fields.push({ title: "Prospect", value: payload.prospectName, short: true });
-  if (payload.gap) fields.push({ title: "Why it's needed", value: payload.gap, short: false });
+  const projectId = "1206803464730868";
 
-  const slackPayload = {
-    text: `:memo: *New Content Request*`,
-    blocks: [
-      {
-        type: "header",
-        text: { type: "plain_text", text: "New Content Request from Sales", emoji: true }
-      },
-      {
-        type: "section",
-        text: { type: "mrkdwn", text: `*${payload.topic}*` }
-      },
-      {
-        type: "section",
-        fields: fields.map(f => ({
-          type: "mrkdwn",
-          text: `*${f.title}:*\n${f.value}`
-        }))
-      },
-    ],
-  };
+  const lines = [];
+  if (payload.contentType) lines.push(`Format: ${payload.contentType}`);
+  if (payload.dealStage) lines.push(`Deal Stage: ${payload.dealStage}`);
+  if (payload.persona) lines.push(`Persona: ${payload.persona}`);
+  if (payload.challenges) lines.push(`Challenges: ${payload.challenges}`);
+  if (payload.prospectName) lines.push(`Prospect: ${payload.prospectName}`);
+  if (payload.gap) lines.push(`\nWhy it's needed:\n${payload.gap}`);
 
-  if (payload.gap) {
-    slackPayload.blocks.push({
-      type: "section",
-      text: { type: "mrkdwn", text: `*Why it's needed:*\n${payload.gap}` }
-    });
-  }
+  const notes = lines.join("\n");
 
-  const resp = await fetch(webhookUrl, {
+  const resp = await fetch("https://app.asana.com/api/1.0/tasks", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(slackPayload),
+    headers: {
+      Authorization: "Bearer " + token,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      data: {
+        name: payload.topic,
+        notes,
+        projects: [projectId],
+      },
+    }),
   });
 
-  return resp.ok;
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`Asana API returned ${resp.status}: ${err}`);
+  }
+
+  const result = await resp.json();
+  return result.data?.gid ? true : false;
 }
 
 // ---------------------------------------------------------------------------

@@ -21,5 +21,7 @@ jobs:
           wranglerVersion: "3.99.0"
           secrets: |
             HUBSPOT_TOKEN
+            ASANA_TOKEN
         env:
           HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          ASANA_TOKEN: ${{ secrets.ASANA_TOKEN }}
