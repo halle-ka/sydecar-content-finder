@@ -1623,14 +1623,20 @@ function App() {
             max_tokens: 256,
             messages: [{ role: "user", content: `You are analyzing sales meeting notes for Sydecar, a private markets infrastructure platform.
 
-Based on these notes, identify the prospect's key challenges or priorities. Return a JSON array of short challenge phrases (2-5 words each, max 5 items). Focus on what matters most to them: speed/timing, cost/pricing, compliance, trust, complexity, track record, etc.
+Based on these notes, extract TWO types of things:
+1. **Specific topics** the prospect asked about or expressed interest in (e.g., "Form ADV", "secondary transactions", "layered SPVs", "K-1 distribution", "506(b) vs 506(c)", "carried interest", "LP reporting")
+2. **Broader challenges or priorities** (e.g., "Speed to close", "Pricing concerns", "Compliance questions")
 
-If the notes don't reveal clear challenges, return an empty array [].
+Be specific. If the prospect mentioned a particular regulatory form, product feature, structure type, or process, include it exactly as they discussed it. These will be used to match the prospect to relevant content.
+
+Return a JSON array of short phrases (2-5 words each, max 8 items). Put specific topics first, then broader challenges.
+
+If the notes don't reveal anything useful, return an empty array [].
 
 Meeting notes:
 ${mn}
 
-Return ONLY a JSON array of strings, nothing else. Example: ["Speed to close", "Pricing concerns", "LP reporting"]` }]
+Return ONLY a JSON array of strings, nothing else. Example: ["Form ADV compliance", "Secondary transactions", "LP reporting", "Speed to close"]` }]
           })
         });
         if (resp.ok) {
