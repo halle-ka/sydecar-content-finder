@@ -13,7 +13,7 @@
  * 2. Paste this entire file into the editor (replace any existing code)
  * 3. Add your secrets via Project Settings > Script Properties:
  *    - GITHUB_TOKEN  = your GitHub Personal Access Token (repo scope)
- *    - GITHUB_REPO   = halle-hka/sydecar-content-finder
+ *    - GITHUB_REPO   = halle-ka/sydecar-content-finder
  *    - HUBSPOT_TOKEN = your HubSpot Private App token (crm.objects.contacts.read,
  *                      crm.objects.deals.read scopes)
  * 4. Deploy > New deployment > Web app > Execute as "Me" > Anyone > Deploy
@@ -326,7 +326,7 @@ function getContactContext(contactId) {
 function triggerAddAsset(url, title) {
   var props = PropertiesService.getScriptProperties();
   var token = props.getProperty("GITHUB_TOKEN");
-  var repo = props.getProperty("GITHUB_REPO") || "halle-hka/sydecar-content-finder";
+  var repo = props.getProperty("GITHUB_REPO") || "halle-ka/sydecar-content-finder";
 
   if (!token) throw new Error("GITHUB_TOKEN not configured");
 

@@ -3,4 +3,4 @@ main = "index.js"
 compatibility_date = "2024-01-01"
 
 [vars]
-GITHUB_REPO = "halle-hka/sydecar-content-finder"
+GITHUB_REPO = "halle-ka/sydecar-content-finder"

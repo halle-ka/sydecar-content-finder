@@ -6,7 +6,7 @@
  * Environment variables (set as secrets in Cloudflare or GitHub):
  *   HUBSPOT_TOKEN  — HubSpot Private App token
  *   GITHUB_TOKEN   — GitHub PAT (repo scope)
- *   GITHUB_REPO    — e.g. halle-hka/sydecar-content-finder (set in wrangler.toml)
+ *   GITHUB_REPO    — e.g. halle-ka/sydecar-content-finder (set in wrangler.toml)
  */
 
 // ---------------------------------------------------------------------------
@@ -351,7 +351,7 @@ async function sendContentRequest(payload, env) {
 // ---------------------------------------------------------------------------
 async function triggerAddAsset(url, title, env) {
   const token = env.GH_PAT;
-  const repo = env.GITHUB_REPO || "halle-hka/sydecar-content-finder";
+  const repo = env.GITHUB_REPO || "halle-ka/sydecar-content-finder";
   if (!token) throw new Error("GITHUB_TOKEN not configured");
 
   const resp = await fetch(
