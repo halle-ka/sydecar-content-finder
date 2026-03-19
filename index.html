@@ -456,6 +456,44 @@
     margin-top: 1rem;
   }
 
+  .content-request-section {
+    margin-top: 2rem;
+    border-top: 1px solid var(--gray-200);
+    padding-top: 1.5rem;
+  }
+  .content-request-toggle {
+    background: none;
+    border: none;
+    color: var(--gray-500);
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-sans);
+    transition: color 0.15s;
+  }
+  .content-request-toggle:hover {
+    color: var(--primary);
+  }
+  .request-icon {
+    font-size: 1.1rem;
+  }
+  .content-request-form {
+    margin-top: 1rem;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+  }
+  .content-request-intro {
+    font-size: 0.85rem;
+    color: var(--gray-500);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+  }
+
   .library-section {
     margin-top: 2.5rem;
     border-top: 1px solid var(--gray-200);
@@ -936,6 +974,146 @@ function AssetLibrary({ assets }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// REQUEST CONTENT — Let sales request new assets when gaps are identified
+// ============================================================================
+function ContentRequest({ prospectName, dealStage, persona, challenges }) {
+  const [open, setOpen] = useState(false);
+  const [topic, setTopic] = useState("");
+  const [contentType, setContentType] = useState("");
+  const [gap, setGap] = useState("");
+  const [reqStatus, setReqStatus] = useState("idle"); // idle | sending | sent | error
+
+  const typeOptions = [
+    "One-pager / sales sheet",
+    "Case study",
+    "Blog post",
+    "Comparison guide (vs competitor)",
+    "ROI / pricing breakdown",
+    "Webinar / recorded session",
+    "Product demo or walkthrough",
+    "White paper / report",
+    "Other",
+  ];
+
+  const handleSubmit = async () => {
+    if (!topic.trim() || !contentType) return;
+    setReqStatus("sending");
+
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "content_request",
+          topic: topic.trim(),
+          contentType,
+          gap: gap.trim(),
+          prospectName: prospectName || "",
+          dealStage: dealStage || "",
+          persona: persona || "",
+          challenges: (challenges || []).join(", "),
+        }),
+      });
+      setReqStatus("sent");
+      setTimeout(() => {
+        setTopic("");
+        setContentType("");
+        setGap("");
+        setReqStatus("idle");
+        setOpen(false);
+      }, 4000);
+    } catch {
+      setReqStatus("error");
+    }
+  };
+
+  return (
+    <div className="content-request-section">
+      <button
+        className={`content-request-toggle ${open ? "open" : ""}`}
+        onClick={() => setOpen(!open)}
+      >
+        <span className="request-icon">&#x1F4AC;</span> Don't see what you need? Request new content
+      </button>
+
+      {open && (
+        <div className="content-request-form">
+          <p className="content-request-intro">
+            Let the marketing team know what content would help you close this deal. Your request will be sent directly to the team.
+          </p>
+
+          <div className="form-group">
+            <label htmlFor="reqTopic">What topic or asset do you need?</label>
+            <input
+              id="reqTopic"
+              type="text"
+              value={topic}
+              onChange={e => setTopic(e.target.value)}
+              placeholder='e.g. "One-pager comparing Sydecar vs Carta for fund admin"'
+              disabled={reqStatus === "sending"}
+              style={{fontFamily: "var(--font-sans)", fontSize: "0.95rem", padding: "0.6rem 0.75rem", border: "1px solid var(--gray-300)", borderRadius: 8, background: "var(--white)", color: "var(--gray-800)"}}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="reqType">What format would be most useful?</label>
+            <select
+              id="reqType"
+              value={contentType}
+              onChange={e => setContentType(e.target.value)}
+              disabled={reqStatus === "sending"}
+            >
+              <option value="">Select...</option>
+              {typeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="reqGap">
+              Why do you need this? <span style={{fontWeight: 400, textTransform: "none", color: "var(--gray-400)"}}>(optional)</span>
+            </label>
+            <textarea
+              id="reqGap"
+              value={gap}
+              onChange={e => setGap(e.target.value)}
+              placeholder="What question is the prospect asking that you can't answer with existing materials?"
+              disabled={reqStatus === "sending"}
+              rows={3}
+            />
+          </div>
+
+          {reqStatus === "idle" && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleSubmit}
+              disabled={!topic.trim() || !contentType}
+            >
+              Send request to marketing
+            </button>
+          )}
+
+          {reqStatus === "sending" && (
+            <div className="loading" style={{padding: "1rem 0", textAlign: "left"}}>
+              <div className="spinner" style={{width: 20, height: 20, borderWidth: 2, marginRight: 8, verticalAlign: "middle"}} />
+              <span style={{color: "var(--gray-500)", fontSize: "0.9rem"}}>Sending request...</span>
+            </div>
+          )}
+
+          {reqStatus === "sent" && (
+            <div className="success-box">Request sent to the marketing team. They'll follow up with you.</div>
+          )}
+
+          {reqStatus === "error" && (
+            <div className="error-box" style={{marginTop: "1rem"}}>Something went wrong. Try again or message the marketing team directly.</div>
+          )}
         </div>
       )}
     </div>
@@ -1718,6 +1896,7 @@ Return ONLY a JSON array. No other text, no markdown fences. Each element:
             if (!asset) return null;
             return <ResultCard key={i} asset={asset} rationale={rec.rationale} />;
           })}
+          <ContentRequest prospectName={context} dealStage={dealStage} persona={persona} challenges={challenges} />
         </div>
       )}
 

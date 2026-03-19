@@ -288,6 +288,58 @@ async function getContactContext(contactId, env) {
 }
 
 // ---------------------------------------------------------------------------
+// Send content request to Slack
+// ---------------------------------------------------------------------------
+async function sendContentRequest(payload, env) {
+  const webhookUrl = env.SLACK_WEBHOOK_URL;
+  if (!webhookUrl) throw new Error("SLACK_WEBHOOK_URL not configured");
+
+  const fields = [];
+  if (payload.contentType) fields.push({ title: "Format", value: payload.contentType, short: true });
+  if (payload.dealStage) fields.push({ title: "Deal Stage", value: payload.dealStage, short: true });
+  if (payload.persona) fields.push({ title: "Persona", value: payload.persona, short: true });
+  if (payload.challenges) fields.push({ title: "Challenges", value: payload.challenges, short: true });
+  if (payload.prospectName) fields.push({ title: "Prospect", value: payload.prospectName, short: true });
+  if (payload.gap) fields.push({ title: "Why it's needed", value: payload.gap, short: false });
+
+  const slackPayload = {
+    text: `:memo: *New Content Request*`,
+    blocks: [
+      {
+        type: "header",
+        text: { type: "plain_text", text: "New Content Request from Sales", emoji: true }
+      },
+      {
+        type: "section",
+        text: { type: "mrkdwn", text: `*${payload.topic}*` }
+      },
+      {
+        type: "section",
+        fields: fields.map(f => ({
+          type: "mrkdwn",
+          text: `*${f.title}:*\n${f.value}`
+        }))
+      },
+    ],
+  };
+
+  if (payload.gap) {
+    slackPayload.blocks.push({
+      type: "section",
+      text: { type: "mrkdwn", text: `*Why it's needed:*\n${payload.gap}` }
+    });
+  }
+
+  const resp = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(slackPayload),
+  });
+
+  return resp.ok;
+}
+
+// ---------------------------------------------------------------------------
 // Trigger GitHub Actions workflow (add-asset)
 // ---------------------------------------------------------------------------
 async function triggerAddAsset(url, title, env) {
@@ -365,6 +417,12 @@ export default {
           if (!url) return jsonResp({ error: "url is required" });
           const ok = await triggerAddAsset(url, payload.title, env);
           return jsonResp(ok ? { success: true } : { error: "GitHub API failed" });
+        }
+
+        case "content_request": {
+          if (!payload.topic) return jsonResp({ error: "topic is required" });
+          const ok = await sendContentRequest(payload, env);
+          return jsonResp(ok ? { success: true } : { error: "Failed to send to Slack" });
         }
 
         default:
