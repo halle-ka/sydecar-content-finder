@@ -1823,7 +1823,7 @@ Return ONLY a JSON array. No other text, no markdown fences. Each element:
         <form onSubmit={handleSubmit}>
           <div className="form-grid">
             <ProspectSearch onSelect={handleProspectSelect} />
-            <SelectField id="dealStage" label="Deal Stage" options={DEAL_STAGES} value={dealStage} onChange={setDealStage} required placeholder="Select..." />
+            <SelectField id="dealStage" label="Lifecycle Stage" options={DEAL_STAGES} value={dealStage} onChange={setDealStage} required placeholder="Select..." />
             <SelectField id="persona" label="Prospect Persona" options={PERSONAS} value={persona} onChange={setPersona} required placeholder="Select..." />
             <SelectField id="competitor" label="Competitor Mentioned" options={COMPETITORS} value={competitor} onChange={setCompetitor} />
             <div className="form-group">

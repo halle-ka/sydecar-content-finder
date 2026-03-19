@@ -229,12 +229,16 @@ async function getDealContext(dealId, env) {
   if (assocContacts.length > 0) {
     const contactId = assocContacts[0].id;
     const contact = await hubspotFetch(
-      `/crm/v3/objects/contacts/${contactId}?properties=firstname,lastname,email,customer_segment,competitor,lead_qualification_notes`, env
+      `/crm/v3/objects/contacts/${contactId}?properties=firstname,lastname,email,customer_segment,competitor,lead_qualification_notes,lifecyclestage`, env
     );
     result.segment = contact.properties.customer_segment || "";
     result.contactName = [(contact.properties.firstname || ""), (contact.properties.lastname || "")].join(" ").trim();
     result.contactEmail = contact.properties.email || "";
     result.competitor = contact.properties.competitor || "";
+
+    // Use contact lifecycle stage instead of deal stage
+    const lcs = contact.properties.lifecyclestage || "";
+    if (lcs) result.dealStage = lcs.charAt(0).toUpperCase() + lcs.slice(1).toLowerCase();
 
     const lqNotes = contact.properties.lead_qualification_notes || "";
     if (lqNotes) result.notes = (result.notes ? result.notes + "\n\n" : "") + lqNotes;
@@ -255,31 +259,31 @@ async function getContactContext(contactId, env) {
 
   const name = [(contact.properties.firstname || ""), (contact.properties.lastname || "")].join(" ").trim();
 
+  // Always use lifecycle stage
+  const lcs = contact.properties.lifecyclestage || "";
+  const lifecycleLabel = lcs ? lcs.charAt(0).toUpperCase() + lcs.slice(1).toLowerCase() : "";
+
   const result = {
     contactId,
     contactName: name,
     contactEmail: contact.properties.email || "",
     company: contact.properties.company || "",
     segment: contact.properties.customer_segment || "",
-    dealStage: "",
+    dealStage: lifecycleLabel,
     dealName: "",
     competitor: contact.properties.competitor || "",
     meetingNotes: "",
     notes: contact.properties.lead_qualification_notes || "",
   };
 
+  // Still fetch deal for notes/context, but not for stage
   const assocDeals = contact.associations?.deals?.results || [];
   if (assocDeals.length > 0) {
     const dealId = assocDeals[0].id;
-    const deal = await hubspotFetch(`/crm/v3/objects/deals/${dealId}?properties=dealname,dealstage,description`, env);
-    result.dealStage = STAGE_LABELS[deal.properties.dealstage] || deal.properties.dealstage || "";
+    const deal = await hubspotFetch(`/crm/v3/objects/deals/${dealId}?properties=dealname,description`, env);
     result.dealName = deal.properties.dealname || "";
     const dealDesc = deal.properties.description || "";
     if (dealDesc) result.notes = (result.notes ? result.notes + "\n\n" : "") + dealDesc;
-  } else {
-    // No deal — fall back to lifecycle stage
-    const lcs = contact.properties.lifecyclestage || "";
-    if (lcs) result.dealStage = lcs.charAt(0).toUpperCase() + lcs.slice(1).toLowerCase();
   }
 
   result.meetingNotes = await getEngagementNotes(contactId, env);
